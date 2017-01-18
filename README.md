@@ -3,7 +3,7 @@
 Created by [Jonghwan Mun](http://cvlab.postech.ac.kr/~jonghwan/), [Minsu Cho](https://cvlab.postech.ac.kr/~mcho/) and [Bohyung Han](http://cvlab.postech.ac.kr/~bhhan/) at [POSTECH cvlab](http://cvlab.postech.ac.kr/lab/). <br />
 If you use this code in a publication, please cite our [arXiv preprint](https://arxiv.org/abs/1612.03557).
 
-    @article{mun2015text,
+    @article{mun2016text,
        title={Text-guided Attention Model for Image Captioning},
        author={Mun, Jonghwan and Cho, Minsu and Han, Bohyung},
        journal={arXiv preprint arXiv:1612.03557},
