@@ -1,7 +1,7 @@
 ## Text-guided Attention Model for Imagoe Captioning
 
 Created by [Jonghwan Mun](http://cvlab.postech.ac.kr/~jonghwan/), [Minsu Cho](https://cvlab.postech.ac.kr/~mcho/) and [Bohyung Han](http://cvlab.postech.ac.kr/~bhhan/) at [POSTECH cvlab](http://cvlab.postech.ac.kr/lab/).
-If you use this code in a publication, please cite our paper().
+If you use this code in a publication, please cite our [arXiv preprint](https://arxiv.org/abs/1612.03557).
 
     @article{noh2015image,
        title={Text-guided Attention Model for Image Captioning},
