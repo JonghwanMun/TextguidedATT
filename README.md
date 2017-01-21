@@ -31,15 +31,15 @@ If you use this code in a publication, please cite our [arXiv preprint](https://
 
 ### Download pre-trained model
 
-  '''
+  ```
   bash get_pretrained_model.sh
-  '''
+  ```
 
 ### Running (data construction, training, testing)
 
-  '''
+  ```
   bash running_script.sh
-  '''
+  ```
 
 ### Licence
 
