@@ -7,8 +7,8 @@ require 'hdf5'
 
 -- local imports
 require 'layers.LanguageModel'
-require 'layers.sentenceEncoder'
-require 'layers.senGuideAtt'
+require 'layers.guidanceCaptionEncoder'
+require 'layers.textGuideAtt'
 local utils = require 'misc.utils'
 local net_utils = require 'misc.net_utils'
 
@@ -94,7 +94,7 @@ protos.senEncoder:evaluate()
 collectgarbage() -- "yeah, sure why not"
 
 -------------------------------------------------------------------------------
--- Main loop
+-- Main
 -------------------------------------------------------------------------------
 
 local file = hdf5.open(opt.output_h5, 'w')

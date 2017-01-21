@@ -1,4 +1,5 @@
-Run 'run_extract_res.sh' with following line
+Run 'run_extract_res.sh' for extracting residual features for MS-COCO dataset
 
+"""
 bash run_extract_res.sh
-
+"""

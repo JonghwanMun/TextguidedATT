@@ -10,7 +10,7 @@ bash run_extract_res.sh
 cd ../002_skipthought
 bash run_extract_skip.sh
 cd ../003_consensus_captions
-bash run_obtain_gs.sh
+bash run_obtain_consensus_captions.sh
 
 ######################################################################
 ##### 1. Training Model

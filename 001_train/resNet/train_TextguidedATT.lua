@@ -14,10 +14,10 @@ require 'cv.imgproc'
 
 -- local imports
 require 'layers.LanguageModel'
-require 'layers.sentenceEncoder'
+require 'layers.guidanceCaptionEncoder'
 require 'misc.resAttLoader_kNN'
 require 'misc.resAttLoader_raw'
-local senGuideAtt = require 'layers.senGuideAtt'
+local textGuidedAtt = require 'layers.textGuideAtt'
 local utils = require 'misc.utils'
 local net_utils = require 'misc.net_utils'
 require 'misc.optim_updates'
@@ -96,11 +96,11 @@ cmd:option('-scheduled_sampling_decay_rate', 0.05, 'decay rate(speed) of schedul
 cmd:option('-scheduled_sampling_decay_every', 1, 'decay rate(speed) of scheduled sampling probability')
 
 -- NN options
-cmd:option('-use_NN', 10, '(-1 : train with only GT) and (>0 means using kNN after the epoch)')
-cmd:option('-NN_prob_decay_rate', 0.05, 'decay rate of NN probability')
+cmd:option('-use_NN', 1, '(-1 : train with only GT) and (>0 means using kNN, guidance captions, after the epoch)')
+cmd:option('-NN_prob_decay_rate', 0.05, 'decay rate of probability using guidance captions')
 cmd:option('-NN_prob_decay_every', 1, 'decay rate per how many epoch')
-cmd:option('-NN_prob_start_point', 0.2, 'start probability')
-cmd:option('-NN_prob_end_point', 0.8, 'end probability')
+cmd:option('-NN_prob_start_point', 1.0, 'start probability of using guidance caption')
+cmd:option('-NN_prob_end_point', 1.0, 'end probability of using guidance caption')
 
 -- Evaluation/Checkpointing
 cmd:option('-val_images_use', 3200, 'how many images to use when periodically evaluating the validation loss? (-1 = all)')
@@ -128,6 +128,7 @@ torch.setdefaulttensortype('torch.FloatTensor') -- for CPU
 print('options are as follows :')
 print(opt)
 
+-- for gpu
 if opt.gpuid >= 0 then
   require 'cutorch'
   require 'cunn'
@@ -149,7 +150,6 @@ else
   loader = resAttLoader_raw{img_info_file=opt.img_info_file, cap_h5_file=opt.cap_h5_file,
                             kNN_cap_json_file=opt.kNN_cap_json_file, on_gpu=(opt.gpuid>=0),
                             cnn_img_size=448, img_root=opt.img_root}
-
 end
 
 -------------------------------------------------------------------------------
@@ -166,7 +166,7 @@ local timer = torch.Timer()
 local protos = {}
 local epoch = 1
 local iter = 1
-local kk = 14 
+local kk = 14  -- (kk*kk) is spatial dimensions for residual feature map
 
 if string.len(opt.start_from) > 0 then  -- finetuning the model
   -- load protos from file
@@ -201,11 +201,15 @@ if string.len(opt.start_from) > 0 then  -- finetuning the model
     end
 
     if protos.senEncoder ~= nil then
-      print('===load model===> No precomputed caption feat, but existing senEncoder model!!')
-      local se_modules = protos.senEncoder:getModulesList()
+       protos.guidanceCaptionEncoder = protos.senEncoder
+    end
+
+    if protos.guidanceCaptionEncoder ~= nil then
+      print('===load model===> No precomputed caption feat, but existing guidanceCaptionEncoder model!!')
+      local se_modules = protos.guidanceCaptionEncoder:getModulesList()
       for k,v in pairs(se_modules) do net_utils.unsanitize_gradients(v) end
     else
-      print('===load model===> No precomputed caption feat and senEncoder model!!')
+      print('===load model===> No precomputed caption feat and guidanceCaptionEncoder model!!')
       print('Load skip-thought vector data')
       local uparams = torch.load(opt.uni_gru_path)
       local utables = torch.load(opt.uni_gru_word2vec_path)
@@ -215,7 +219,7 @@ if string.len(opt.start_from) > 0 then  -- finetuning the model
       seOpt.seq_length = loader:getSeqLength()
       print('Sentence encoder model option is as follows :')
       print(seOpt)
-      protos.senEncoder = nn.sentenceEncoder(uparams, utables, seOpt)
+      protos.guidanceCaptionEncoder = nn.guidanceCaptionEncoder(uparams, utables, seOpt)
     end
   end
 
@@ -259,11 +263,11 @@ else -- create protos from scratch
     seOpt.seq_length = loader:getSeqLength()
     print('Sentence encoder model option is as follows :')
     print(seOpt)
-    protos.senEncoder = nn.sentenceEncoder(uparams, utables, seOpt)
+    protos.guidanceCaptionEncoder = nn.guidanceCaptionEncoder(uparams, utables, seOpt)
   end
 
   -- attaching Attention Model based on caption
-  protos.att = senGuideAtt.create(kk, opt.conv_feat_dim, opt.cap_feat_dim, opt.emb_dim, opt.seq_per_img, opt.backend, opt.debug)
+  protos.att = textGuidedAtt.create(kk, opt.conv_feat_dim, opt.cap_feat_dim, opt.emb_dim, opt.seq_per_img, opt.backend, opt.debug)
 
   -- attaching Image Embedding layer
   protos.imgEmb = nn.Sequential()
@@ -299,17 +303,17 @@ end
 --------------------------------------------------------------------------------------------------
 -- flatten and prepare all model parameters to a single vector. 
 local fcn_params, grad_fcn_params 
-local se_params, grad_se_params 
+local sce_params, grad_sce_params 
 if opt.precomputed_feat ~= 'true' then 
   fcn_params, grad_fcn_params = protos.fcn:getParameters()
-  se_params, grad_se_params = protos.senEncoder:getParameters()
+  sce_params, grad_sce_params = protos.guidanceCaptionEncoder:getParameters()
 end
 local att_params, grad_att_params = protos.att:getParameters()
 local imgEmb_params, grad_imgEmb_params = protos.imgEmb:getParameters()
 local lm_params, grad_lm_params = protos.lm:getParameters()
 if opt.precomputed_feat ~= 'true' then 
   print('total number of parameters in FCN    : ', fcn_params:nElement())
-  print('total number of parameters in SE     : ', se_params:nElement())
+  print('total number of parameters in SE     : ', sce_params:nElement())
 end
 print('total number of parameters in ATT    : ', att_params:nElement())
 print('total number of parameters in IMGEMB : ', imgEmb_params:nElement())
@@ -329,9 +333,9 @@ if opt.precomputed_feat ~= 'true' then
   net_utils.sanitize_gradients(thin_fcn)
 
   -- sanitize sentence embedding
-  thin_se = protos.senEncoder:clone()
-  thin_se.core:share(protos.senEncoder.core, 'weight', 'bias')
-  thin_se.lookup_table:share(protos.senEncoder.lookup_table, 'weight', 'bias')
+  thin_se = protos.guidanceCaptionEncoder:clone()
+  thin_se.core:share(protos.guidanceCaptionEncoder.core, 'weight', 'bias')
+  thin_se.lookup_table:share(protos.guidanceCaptionEncoder.lookup_table, 'weight', 'bias')
   local se_modules = thin_se:getModulesList()
   for k,v in pairs(se_modules) do net_utils.sanitize_gradients(v) end
 end
@@ -355,7 +359,7 @@ for k,v in pairs(lm_modules) do net_utils.sanitize_gradients(v) end
 -- create clones and ensure parameter sharing. we have to do this 
 -- all the way here at the end because calls such as :cuda() and
 -- :getParameters() reshuffle memory around.
-if opt.precomputed_feat ~= 'true' then protos.senEncoder:createClones() end
+if opt.precomputed_feat ~= 'true' then protos.guidanceCaptionEncoder:createClones() end
 protos.lm:createClones()
 
 collectgarbage()
@@ -396,7 +400,7 @@ local function eval_split(split, evalopt)
   local val_images_use = utils.getopt(evalopt, 'val_images_use', true)
 
   protos.lm:evaluate(); protos.imgEmb:evaluate(); protos.att:evaluate(); 
-  if opt.precomputed_feat ~= 'true' then protos.senEncoder:evaluate(); protos.fcn:evaluate() end
+  if opt.precomputed_feat ~= 'true' then protos.guidanceCaptionEncoder:evaluate(); protos.fcn:evaluate() end
 
   loader:resetIterator(split) -- rewind iteator back to first datapoint in the split
   local n = 0
@@ -406,15 +410,13 @@ local function eval_split(split, evalopt)
   local predictions = {}
   local vocab = loader:getVocab()
 
-  -- For NN caption
-  print('\n----------------------------------------Evaluation NN Caption-------------------------------------------')
+  print('\n---------------------- Evaluation ------------------------')
   while true do
 
-    -- fetch a batch of data
     -- get batch of data
     local data = loader:getBatch{batch_size = opt.batch_size, split = split..'NN', seq_per_img = opt.seq_per_img}
 
-    -- In val/test mode, We actually need only one NN caption for each image in evaluation
+    -- In val/test mode, We actually need only one guidance caption for each image in evaluation
     -- but, network requires (seq_per_img) captions for each image
     -- So, redundant calculation conducted...
     local img_feat, cap_feat 
@@ -424,7 +426,7 @@ local function eval_split(split, evalopt)
       n = n + data.img_feat:size(1)
     else
       img_feat = protos.fcn:forward(data.imgs)
-      cap_feat = protos.senEncoder:forward({data.nn_labels, data.nn_label_length})
+      cap_feat = protos.guidanceCaptionEncoder:forward({data.nn_labels, data.nn_label_length})
       n = n + data.imgs:size(1)
     end
     local attended_feats, alphas = unpack(protos.att:forward({img_feat, cap_feat}))
@@ -471,69 +473,10 @@ local function eval_split(split, evalopt)
   end
   table.insert(val_loss, loss_sum/loss_evals)
 
-  -- For GT caption
-  print('\n----------------------------------------Evaluation GT Caption-------------------------------------------')
-  n = 0
-  loss_sum = 0
-  loss_evals = 0
-  loader:resetIterator(split) -- rewind iteator back to first datapoint in the split
-  local gt_predictions = {}
-  while true do
-    local data = loader:getBatch{batch_size = opt.batch_size, split = split, seq_per_img = opt.seq_per_img}
-
-    -- In val/test mode, We actually need only one NN caption for each image in evaluation
-    -- but, network requires (seq_per_img) captions for each image
-    -- So, redundant calculation conducted...
-    local img_feat, cap_feat 
-    if opt.precomputed_feat == 'true' then
-      img_feat = data.img_feat
-      cap_feat = data.cap_feat
-      n = n + data.img_feat:size(1)
-    else
-      img_feat = protos.fcn:forward(data.imgs)
-      cap_feat = protos.senEncoder:forward({data.labels, data.label_length})
-      n = n + data.imgs:size(1)
-    end
-    local attended_feats, alphas = unpack(protos.att:forward({img_feat, cap_feat}))
-    local emb_feats = protos.imgEmb:forward(attended_feats)
-    local logprobs = protos.lm:forward({emb_feats, data.labels})
-    local loss = protos.crit:forward(logprobs, data.labels)
-    loss_sum = loss_sum + loss
-    loss_evals = loss_evals + 1
-
-    -- forward the model to also get generated samples for each image
-    local seq, probs = protos.lm:sample(emb_feats)
-    local sents = net_utils.decode_sequence(vocab, seq) -- idx to word
-    print(string.format('evaled  : %s', sents[1]))
-    for k=1,#sents/opt.seq_per_img do
-      local entry = {image_id = data.infos[k].id, caption = sents[(k-1)*opt.seq_per_img+1]}
-      table.insert(gt_predictions, entry)
-      if verbose and n%100 == 0 then
-        print(string.format('image %s: %s', entry.image_id, entry.caption))
-      end
-    end
-
-    -- if we wrapped around the split or used up val imgs budget then bail
-    local ix0 = data.bounds.it_pos_now
-    local ix1 = mathmin(data.bounds.it_max, val_images_use)
-    if verbose then
-      print(string.format('evaluating validation performance... %d/%d (%f)', ix0-1, ix1, loss))
-    end
-
-    if loss_evals % 10 == 0 then collectgarbage() end
-    if data.bounds.wrapped then break end -- the split ran out of data, lets break out
-    if n >= val_images_use then break end -- we've used enough images
-    print('-----------------------------------------------------------------------------------')
-
-  end
-  table.insert(val_loss, loss_sum/loss_evals)
-
   local lang_stats = {}
   if evalopt.language_eval == 1 then
     table.insert(lang_stats, net_utils.language_eval(predictions, opt.id))
     print('-----------------------------------Score for NN Caption-----------------------------------------')
-    table.insert(lang_stats, net_utils.language_eval(gt_predictions, opt.id .. 'gt'))
-    print('-----------------------------------Score for GT Caption-----------------------------------------')
   end
 
   return val_loss, predictions, lang_stats
@@ -546,8 +489,8 @@ local function lossFun()
   protos.lm:training(); protos.imgEmb:training(); protos.att:training(); 
   grad_lm_params:zero(); grad_imgEmb_params:zero(); grad_att_params:zero(); 
   if opt.precomputed_feat ~= 'true' then 
-    protos.senEncoder:training(); protos.fcn:training()
-    grad_se_params:zero(); grad_fcn_params:zero()
+    protos.guidanceCaptionEncoder:training(); protos.fcn:training()
+    grad_sce_params:zero(); grad_fcn_params:zero()
   end
 
   local vocab = loader:getVocab()
@@ -563,10 +506,10 @@ local function lossFun()
     local s_prob = torch.FloatTensor{NN_prob, 1-NN_prob}
     local sampling = torch.multinomial(s_prob, 1, true)
     if sampling[1] == 1 then 
-      print(string.format('===> training based on NN (%.2f)', NN_prob))
+      print(string.format('===> training based on guidance caption (%.2f)', NN_prob))
       train_split = 'trainNN'
     else
-      print(string.format('===> training based on GT (%.2f)', NN_prob))
+      print(string.format('===> training based on GT caption (%.2f)', NN_prob))
     end
   end
 
@@ -586,9 +529,9 @@ local function lossFun()
   else
     img_feat = protos.fcn:forward(data.imgs)
     if data.nn_labels == nil then
-      cap_feat = protos.senEncoder:forward({data.labels, data.label_length}) -- (nBatch*5, 2400) 
+      cap_feat = protos.guidanceCaptionEncoder:forward({data.labels, data.label_length}) -- (nBatch*5, 2400) 
     else
-      cap_feat = protos.senEncoder:forward({data.nn_labels, data.nn_label_length}) -- (nBatch*5, 2400) 
+      cap_feat = protos.guidanceCaptionEncoder:forward({data.nn_labels, data.nn_label_length}) -- (nBatch*5, 2400) 
     end
   end
   local attended_feats, alphas = unpack(protos.att:forward({img_feat, cap_feat}))
@@ -633,8 +576,8 @@ local function lossFun()
   if opt.cnn_finetune_after >= 0 and epoch > opt.cnn_finetune_after then
     if opt.precomputed_feat ~= 'true' then 
       local dimages = protos.fcn:backward(data.imgs, dimg_feat)
-      if data.nn_labels == nil then local dlables = protos.senEncoder:backward({data.labels, data.label_length}, dcap_feat)
-      else local dlables = protos.senEncoder:backward({data.nn_labels, data.nn_label_length}, dcap_feat) end
+      if data.nn_labels == nil then local dlables = protos.guidanceCaptionEncoder:backward({data.labels, data.label_length}, dcap_feat)
+      else local dlables = protos.guidanceCaptionEncoder:backward({data.nn_labels, data.nn_label_length}, dcap_feat) end
     end
   end
   local backward_time = timer:time().real - bt
@@ -651,7 +594,7 @@ local function lossFun()
         grad_fcn_params:add(opt.cnn_weight_decay, fcn_params)
       end
       grad_fcn_params:clamp(-opt.grad_clip, opt.grad_clip)
-      grad_se_params:clamp(-opt.grad_clip, opt.grad_clip)
+      grad_sce_params:clamp(-opt.grad_clip, opt.grad_clip)
     end
   end
   -----------------------------------------------------------------------------
@@ -667,9 +610,9 @@ end
 -- Main loop
 -------------------------------------------------------------------------------
 local loss0
-local lm_optim_state, imgEmb_optim_state, att_optim_state, se_optim_state, fcn_optim_state = {}, {}, {}, {}, {}
-local loss_history, val_loss_nn_history, val_loss_gt_history, eta_history = {}, {}, {}, {}
-local val_lang_stats_history, val_lang_stats_gt_history  = {}, {}
+local lm_optim_state, imgEmb_optim_state, att_optim_state, gce_optim_state, fcn_optim_state = {}, {}, {}, {}, {}
+local loss_history, val_loss_nn_history, eta_history = {}, {}, {} 
+local val_lang_stats_history = {}
 local best_score
 local every_epoch = mathceil(loader:getTrainNum() / opt.batch_size)
 local ek = opt.scheduled_sampling_k
@@ -712,10 +655,8 @@ while true do
     print('eta : ', eta)
     eta_history[epoch] = eta
     val_loss_nn_history[epoch] = val_loss[1]
-    val_loss_gt_history[epoch] = val_loss[2]
     if lang_stats then
       val_lang_stats_history[epoch] = lang_stats[1]
-      val_lang_stats_gt_history[epoch] = lang_stats[2]
     end
 
     -- write a (thin) json report
@@ -727,10 +668,8 @@ while true do
     checkpoint.eta_history = eta_history 
     checkpoint.loss_history = loss_history
     checkpoint.val_loss_nn_history = val_loss_nn_history
-    checkpoint.val_loss_gt_history = val_loss_gt_history
     checkpoint.val_predictions = val_predictions -- save these too for CIDEr/METEOR/etc eval
     checkpoint.val_lang_stats_history = val_lang_stats_history
-    checkpoint.val_lang_stats_gt_history = val_lang_stats_gt_history
 
     utils.write_json(checkpoint_path .. '.json', checkpoint)
     print('wrote json checkpoint to ' .. checkpoint_path .. '.json')
@@ -738,7 +677,7 @@ while true do
     local save_protos = {}
     if opt.precomputed_feat ~= 'true' then 
       save_protos.fcn        = thin_fcn
-      save_protos.senEncoder = thin_se 
+      save_protos.guidanceCaptionEncoder = thin_se 
     end
     save_protos.att        = thin_att
     save_protos.imgEmb     = thin_imgEmb
@@ -790,7 +729,7 @@ while true do
   if opt.cnn_finetune_after >= 0 and epoch > opt.cnn_finetune_after then
     if opt.precomputed_feat ~= 'true' then
       adam(fcn_params, grad_fcn_params, cnn_learning_rate, opt.optim_alpha, opt.optim_beta, opt.optim_epsilon, fcn_optim_state)
-      adam(se_params, grad_se_params, cnn_learning_rate, opt.optim_alpha, opt.optim_beta, opt.optim_epsilon, se_optim_state)
+      adam(sce_params, grad_sce_params, cnn_learning_rate, opt.optim_alpha, opt.optim_beta, opt.optim_epsilon, gce_optim_state)
     end
   end
 

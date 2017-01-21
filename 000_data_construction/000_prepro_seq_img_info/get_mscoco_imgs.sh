@@ -2,11 +2,11 @@
 
 # http://mscoco.org/dataset/#download
 cd ../../data/MSCOCO
-# trainset images
+# train set images
 wget http://msvocds.blob.core.windows.net/coco2014/train2014.zip
-# valset images
+# validation set images
 wget http://msvocds.blob.core.windows.net/coco2014/val2014.zip
-# testset images
+# test set images
 wget http://msvocds.blob.core.windows.net/coco2014/test2014.zip
 # unzip
 unzip train2014.zip

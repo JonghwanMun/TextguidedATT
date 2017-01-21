@@ -12,6 +12,5 @@ else
   bash get_resNet101_model.sh
 fi
 
-
 # extract resnet feature
 stdbuf -oL th extract_resnet_feat.lua 2>&1 | tee log_extract_res_feat.log

@@ -27,7 +27,7 @@ If you use this code in a publication, please cite our [arXiv preprint](https://
   0. h5py
   0. cPickle
   0. numpy
-  Maybe all dependencies for python are installed if you use anaconda.
+  <br /> Maybe all dependencies for python are installed if you use anaconda.
 
 ### Running (data construction, training, testing)
   bash running_script.sh
@@ -39,4 +39,6 @@ Check LICENSE file for details.
 
 ### Acknowledgements
 
-This work is funded by the Samsung Electronics Co., (DMC R&D center)
+This work is funded by the Samsung Electronics Co., (DMC R&D center). <br />
+Also, thanks to Andrej Karpathy since this work is implemented based on his code (https://github.com/karpathy/neuraltalk2)
+

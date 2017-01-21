@@ -19,12 +19,12 @@ cmd:text()
 cmd:text('Options')
 
 -- Data input settings
-cmd:option('-model', 'model/resNet/resnet-101.t7', 'path to a 101-layer Residual Network model.')
+cmd:option('-model', 'model/resNet/resnet-101.t7', 'path to the 101-layer Residual Network model.')
 cmd:option('-output_path','data/resnet101_conv_feat_448/','path to the output feature.')
 
 -- Img information
 cmd:option('-img_root','data/MSCOCO/','root folder containing images')
-cmd:option('-cnn_img_size',448,'input image size for residual network')
+cmd:option('-cnn_img_size',448,'input image size for the residual network')
 cmd:option('-img_trainval_info_file','data/coco/coco_trainval_raw.json','path to train & validation image information')
 cmd:option('-img_test_info_file','data/coco/coco_test_raw.json','path to test image information')
 
@@ -44,6 +44,7 @@ print(opt)
 torch.manualSeed(opt.seed)
 torch.setdefaulttensortype('torch.FloatTensor') -- for CPU
 
+-- for gpu
 if opt.gpuid >= 0 then
   require 'cutorch'
   require 'cunn'
@@ -60,7 +61,7 @@ local protos = {}
 protos.net = torch.load(opt.model)
 protos.net:remove(11)
 protos.net:remove(10)
-protos.net:remove(9)
+protos.net:remove(9) -- remove the last three classification layers
 
 -- ship everything to GPU, maybe  &  set to evaluation mode
 if opt.gpuid >= 0 then protos.net:cuda() end
@@ -81,21 +82,21 @@ collectgarbage() -- "yeah, sure why not"
 -------------------------------------------------------------------------------
 function extract_feat(img_info, split)
   
-  local timer = torch.Timer()
-  local nImg = #img_info
+   local timer = torch.Timer()
+   local nImg = #img_info
 
-  for ii=1,nImg do
-    local file_path = img_info[ii].file_path
-    file_path = utils.sen_split(file_path, '/')
-    file_path = string.gsub(file_path[2], 'jpg', 't7')
-    local save_path = opt.output_path .. file_path
+   for ii=1,nImg do
+      local file_path = img_info[ii].file_path
+      file_path = utils.sen_split(file_path, '/')
+      file_path = string.gsub(file_path[2], 'jpg', 't7')
+      local save_path = opt.output_path .. file_path
 
-    local remaining_time = (timer:time().real / (ii)) * (nImg-ii) / 60.0
-    print( string.format('%d/%d: %s (left %.2fs) for %s',ii, nImg, save_path, remaining_time, split) )
+      local remaining_time = (timer:time().real / (ii)) * (nImg-ii) / 60.0
+      print( string.format('%d/%d: %s (left %.2fs) for %s',ii, nImg, save_path, remaining_time, split) )
 
-    if pcall(function() torch.load(save_path) end) then
+      if pcall(function() torch.load(save_path) end) then
       print('file already exist ==> skip')
-    else
+   else
       -- load image and scale 
       local img = image.load(opt.img_root .. img_info[ii].file_path, 3, 'float')
       img = image.scale(img, opt.cnn_img_size, opt.cnn_img_size)
@@ -107,14 +108,14 @@ function extract_feat(img_info, split)
       if opt.gpuid >= 0 then img = img:cuda() end
       local output = protos.net:forward(img):squeeze(1)
       torch.save(save_path, output:float())
-    end
+   end
 
-    if ii % 100 then collectgarbage() end
-  end
+   if ii % 100 then collectgarbage() end
+end
 end
 
 -------------------------------------------------------------------------------
--- Main loop
+-- Main
 -------------------------------------------------------------------------------
 print('Loading trainval img from ', opt.img_trainval_info_file)
 local trainval_info_file = utils.read_json(opt.img_trainval_info_file)

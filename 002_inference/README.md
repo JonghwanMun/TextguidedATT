@@ -1,6 +1,9 @@
-## Inference with multiple guiding sentences
+## Inference with multiple guidance captions 
 
- - ranking_caps.py
+ - ranking_caps.py: <br />
     For generated captions using multiple guidance captions, compute similarity with consensus captions.
- - running: 'bash run_inference.sh'
+ - testing model: 
+ """
+ 'bash run_inference.sh'
+ """
 
