@@ -1,2 +1,1 @@
-Directory for "MSCOCO 2014" dataset
-
+Directory for "MSCOCO 2014" dataset.

@@ -29,8 +29,15 @@ If you use this code in a publication, please cite our [arXiv preprint](https://
   0. numpy
   <br /> Maybe all dependencies for python are installed if you use anaconda.
 
+### Download pre-trained model
+  """
+  bash get_pretrained_model.sh
+  """
+
 ### Running (data construction, training, testing)
+  """
   bash running_script.sh
+  """
 
 ### Licence
 

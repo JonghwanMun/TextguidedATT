@@ -19,11 +19,10 @@ cd ../../001_train/resNet
 bash run_train_caption.sh
 
 # After train the model, you should move the model to 'model/TextguideAtt' folder with following line:
-# mv trained_model/model_name.t7 ../../model/TextguideAtt/res_TextguideAtt.t7
+# mv trained_model/model_name.t7 ../../model/textGuideAtt/res_textGuideAtt.t7
 
 # if you do not want to train model from scratch
-# download the pretrained model using following two lines
-# cd ../../
+# download the pretrained model using following line at the root folder
 # bash get_pretrained_model.sh
 
 ######################################################################

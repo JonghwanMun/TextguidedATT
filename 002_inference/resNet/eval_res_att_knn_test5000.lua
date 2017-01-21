@@ -9,8 +9,8 @@ require 'hdf5'
 
 -- local imports
 require 'layers.LanguageModel'
-require 'layers.sentenceEncoder'
-local senGuideAtt = require 'layers.senGuideAtt'
+require 'layers.guidanceCaptionEncoder'
+local textGuidedAtt = require 'layers.textGuidedAtt'
 local utils = require 'misc.utils'
 local net_utils = require 'misc.net_utils'
 
