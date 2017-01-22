@@ -3,7 +3,7 @@
 Created by [Jonghwan Mun](http://cvlab.postech.ac.kr/~jonghwan/), [Minsu Cho](https://cvlab.postech.ac.kr/~mcho/) and [Bohyung Han](http://cvlab.postech.ac.kr/~bhhan/) at [POSTECH cvlab](http://cvlab.postech.ac.kr/lab/). <br />
 If you use this code in a publication, please cite our [arXiv preprint](https://arxiv.org/abs/1612.03557).
 
-    @article{mun2016text,
+    @article{mun2016textguided,
        title={Text-guided Attention Model for Image Captioning},
        author={Mun, Jonghwan and Cho, Minsu and Han, Bohyung},
        journal={arXiv preprint arXiv:1612.03557},
@@ -13,8 +13,8 @@ If you use this code in a publication, please cite our [arXiv preprint](https://
 ### Dependencies (This project is tested on linux 14.04 64bit with gpu Titan)
 #### Dependencies for torch
   0. torch ['https://github.com/torch/distro']
-  0. cunn (luarocks install cunn)
   0. cutorch (luarocks install cutorch)
+  0. cunn (luarocks install cunn)
   0. cudnn ['https://github.com/soumith/cudnn.torch']
   0. display ['https://github.com/szym/display']
   0. cv ['https://github.com/VisionLabs/torch-opencv']
