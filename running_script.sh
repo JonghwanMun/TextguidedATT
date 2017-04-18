@@ -18,7 +18,8 @@ bash run_obtain_consensus_captions.sh
 cd ../../001_train/resNet
 bash run_train_caption.sh
 
-# After training the model, you should move the model into 'model/textGuideAtt' to evaluate it with following line:
+# After training the model, you should move the model into 'model/textGuideAtt'
+# to evaluate it with following line:
 # mv trained_model/model_name.t7 ../../model/textGuideAtt/res_textGuideAtt.t7
 
 # if you do not want to train model from scratch
