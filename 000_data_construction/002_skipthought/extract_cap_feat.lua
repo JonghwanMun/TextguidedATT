@@ -81,7 +81,7 @@ seOpt.seq_length = seq_size
 print('Sentence encoder model option is as follows :')
 print(seOpt)
 protos = {}
-protos.senEncoder = nn.sentenceEncoder(uparams, utables, seOpt)
+protos.senEncoder = nn.guidanceCaptionEncoder(uparams, utables, seOpt)
 
 -- ship everything to GPU, maybe
 if opt.gpuid >= 0 then
