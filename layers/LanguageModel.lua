@@ -207,7 +207,7 @@ it seems to work, doesn't crash, gives expected looking outputs, and seems to
 improve performance, so I am declaring this correct.
 ]]--
 function layer:sample_beam(imgs, opt)
-  local beam_size = utils.getopt(opt, 'beam_size', 2
+  local beam_size = utils.getopt(opt, 'beam_size', 2)
   local batch_size, feat_dim = imgs:size(1), imgs:size(2)
   local function compare(a,b) return a.p > b.p end -- used downstream
 
