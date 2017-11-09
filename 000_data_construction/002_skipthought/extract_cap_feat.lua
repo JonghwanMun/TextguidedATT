@@ -8,7 +8,7 @@ require 'hdf5'
 -- local imports
 require 'layers.LanguageModel'
 require 'layers.guidanceCaptionEncoder'
-require 'layers.textGuideAtt'
+require 'layers.textGuidedAtt'
 local utils = require 'misc.utils'
 local net_utils = require 'misc.net_utils'
 
@@ -81,7 +81,7 @@ seOpt.seq_length = seq_size
 print('Sentence encoder model option is as follows :')
 print(seOpt)
 protos = {}
-protos.senEncoder = nn.sentenceEncoder(uparams, utables, seOpt)
+protos.senEncoder = nn.guidanceCaptionEncoder(uparams, utables, seOpt)
 
 -- ship everything to GPU, maybe
 if opt.gpuid >= 0 then
