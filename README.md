@@ -1,15 +1,17 @@
 ## Text-guided Attention Model for Image Captioning
 
 Created by [Jonghwan Mun](http://cvlab.postech.ac.kr/~jonghwan/), [Minsu Cho](https://cvlab.postech.ac.kr/~mcho/) and [Bohyung Han](http://cvlab.postech.ac.kr/~bhhan/) at [POSTECH cvlab](http://cvlab.postech.ac.kr/lab/). <br />
-If you want to know details of our paper, please refer to [arXiv preprint](https://arxiv.org/abs/1612.03557).
+If you want to know details of our paper, please refer to [arXiv preprint](https://arxiv.org/abs/1612.03557) or visit our [project page](http://cvlab.postech.ac.kr/research/text_att). <br />
 Also, if you use this code in a publication, please cite our paper using following bibtex.
 
+```
    @inproceedings{mun2017textguided,
       title={Text-guided Attention Model for Image Captioning},
       author={Mun, Jonghwan and Cho, Minsu and Han, Bohyung},
       booktitle={AAAI},
       year={2017}
    }
+```
 
 ### Dependencies (This project is tested on linux 14.04 64bit with gpu Titan)
 #### Dependencies for torch
