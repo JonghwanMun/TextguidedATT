@@ -209,10 +209,10 @@ function resAttLoader_kNN:getBatch(opt)
   end
   data.img_feat = img_batch_feat
   data.cap_feat = cap_batch_feat
-  data.labels       = label_batch:transpose(1,2):contiguous() -- note: make label sequences go down as columns
+  data.labels = label_batch:transpose(1,2):contiguous() -- note: make label sequences go down as columns
 	data.label_length = label_length_batch
   if isNN == true then
-    data.nn_labels       = NN_label_batch:transpose(1,2):contiguous() -- note: make label sequences go down as columns
+    data.nn_labels = NN_label_batch:transpose(1,2):contiguous() -- note: make label sequences go down as columns
   	data.nn_label_length = NN_label_length_batch
   end
   data.bounds = {it_pos_now = self.iterators[split], it_max = #split_ix, wrapped = wrapped}

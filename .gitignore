@@ -1,0 +1,12 @@
+
+# link folders
+model
+layers
+data
+misc
+coco-caption
+!/model
+!/layers
+!/data
+!/misc
+!/coco-caption

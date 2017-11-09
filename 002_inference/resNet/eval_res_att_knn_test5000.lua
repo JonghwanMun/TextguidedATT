@@ -19,7 +19,7 @@ local net_utils = require 'misc.net_utils'
 -------------------------------------------------------------------------------
 cmd = torch.CmdLine()
 cmd:text()
-cmd:text('Train an Image Captioning model')
+cmd:text('Inference an Image Captioning model with multiple consensus captions')
 cmd:text()
 cmd:text('Options')
 
